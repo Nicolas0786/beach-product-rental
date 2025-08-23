@@ -22,14 +22,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: app-java
+    container_name: beach-product-rental
     depends_on:
       db:
         condition: service_healthy
     environment:
-      JAVA_OPTS: "-Dspring.profiles.active=docker"
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
     ports:
       - "8080:8080"
+      - "5005:5005"
 
 volumes:
   mysql_data:
