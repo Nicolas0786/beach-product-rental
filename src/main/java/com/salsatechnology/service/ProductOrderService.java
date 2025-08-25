@@ -2,8 +2,8 @@ package com.salsatechnology.service;
 
 
 import com.salsatechnology.dto.ProductOrderDTO;
-import com.salsatechnology.enums.ProductPricing;
-import com.salsatechnology.factory.ProductPricingFactory;
+import com.salsatechnology.service.pricing.PricingStrategyResolver;
+import com.salsatechnology.service.pricing.ProductPricingStrategy;
 import com.salsatechnology.model.ProductOrder;
 import com.salsatechnology.model.ProductType;
 import com.salsatechnology.repository.ProductOrderRepository;
@@ -24,7 +24,11 @@ import static com.salsatechnology.repository.ProductOrderRepository.toSpecificat
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class ProductOrderService {
 
+	private static final BigDecimal ONE_HUNDRED = new BigDecimal(100);
+
 	private final ProductOrderRepository productOrderRepository;
+
+	private final PricingStrategyResolver pricingStrategyResolver;
 	
 	@Transactional
 	public ProductOrder createOrder(ProductOrderDTO productOrderDTO) {
@@ -43,13 +47,14 @@ public class ProductOrderService {
 	}
 
 	private void setFinancialValues(ProductOrder productOrder, ProductType productType, int timeHour) {
-		ProductPricing productPricing = ProductPricingFactory.of(productType);
-		long productValue = Math.round(productPricing.getPriceHour() * 100);
-		long productTotal = productValue * timeHour;
-		Long userAmount = BigDecimal.valueOf(productTotal)
-				.multiply(BigDecimal.valueOf(productPricing.getEmployeePercentage()))
-				.divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP)
-				.longValue();
+		ProductPricingStrategy productPricing = this.pricingStrategyResolver.resolve(productType);
+		BigDecimal priceHour = productPricing.getPriceHour();
+		BigDecimal total = priceHour.multiply(new BigDecimal(timeHour));
+		long productValue = priceHour.multiply(ONE_HUNDRED).longValue();
+		long productTotal = total.multiply(ONE_HUNDRED).longValue();
+		Long userAmount = total.multiply(productPricing.getEmployeePercentage())
+						.divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP)
+						.multiply(ONE_HUNDRED).longValue();
 
 		productOrder.setProductValue(productValue);
 		productOrder.setProductTotal(productTotal);
